@@ -2152,24 +2152,50 @@ if (btnSubmitNot) {
     });
 }
 
-// ৪. বাজার যোগ করার লজিক
+// ৪. বাজার যোগ করার লজিক (Updated to support adding to history months)
 const btnSaveBazaar = document.getElementById('saveBazaarBtn');
 if (btnSaveBazaar) {
-    btnSaveBazaar.addEventListener('click', function(e) {
+    // Clone node to prevent duplicate event listeners if initialized multiple times
+    const newBtnSaveBazaar = btnSaveBazaar.cloneNode(true);
+    btnSaveBazaar.replaceWith(newBtnSaveBazaar);
+
+    newBtnSaveBazaar.addEventListener('click', function(e) {
         e.preventDefault();
         const memId = parseInt(document.getElementById('bazaarMemberSelect').value);
         const details = document.getElementById('bazaarDetails').value.trim() || "-";
         const amount = parseFloat(document.getElementById('bazaarAmount').value);
         
-        if (isNaN(amount) || amount <= 0) return showToast('সঠিক টাকার পরিমাণ দিন!', 'error');
+        const monthSelectEl = document.getElementById('bazaarMonthSelect');
+        const selectedMonthKey = monthSelectEl ? monthSelectEl.value : 'current';
         
-        AppState.bazaarRecords.push({ 
+        if (isNaN(amount) || amount <= 0) return showToast('সঠিক টাকার পরিমাণ দিন!', 'error');
+
+        // Give it a generic date for the selected month to avoid looking out of place
+        let dateString = new Date().toISOString().split('T')[0];
+        if (selectedMonthKey !== 'current') {
+            dateString = `${selectedMonthKey}-28`; // Fallback indicating a late manual entry
+        }
+
+        const newRecord = { 
             id: Date.now(), 
             memberId: memId, 
             details: details, 
             amount: amount, 
-            date: new Date().toISOString().split('T')[0] 
-        });
+            date: dateString 
+        };
+        
+        if (selectedMonthKey === 'current') {
+            AppState.bazaarRecords.push(newRecord);
+        } else {
+            // Push to history securely
+            if (!AppState.history[selectedMonthKey]) {
+                AppState.history[selectedMonthKey] = { meals: {}, bazaarRecords: [], finalRate: 0 };
+            }
+            if (!AppState.history[selectedMonthKey].bazaarRecords) {
+                AppState.history[selectedMonthKey].bazaarRecords = [];
+            }
+            AppState.history[selectedMonthKey].bazaarRecords.push(newRecord);
+        }
         
         document.getElementById('addBazaarModal').classList.remove('show');
         showToast('বাজার সফলভাবে যোগ হয়েছে!', 'success'); 
